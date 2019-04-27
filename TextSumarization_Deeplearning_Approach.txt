@@ -1,0 +1,188 @@
+## Text Summarization Deeplearning Approach
+## Data set From Kaggle ---> amazon-fine-food-reviews
+import pandas as pd
+
+import re
+
+from nltk.corpus import stopwords
+
+from pickle import dump, load
+
+reviews = pd.read_csv("Reviews.csv")
+
+print(reviews.shape)
+
+print(reviews.head())
+
+print(reviews.isnull().sum())
+
+
+###################################
+reviews = reviews.dropna()
+
+reviews = reviews.drop(['Id','ProductId','UserId','ProfileName','HelpfulnessNumerator','HelpfulnessDenominator', 'Score','Time'], 1)
+
+reviews = reviews.reset_index(drop=True) 
+print (reviews.head())
+
+####################################
+contractions = {
+
+"ain't": "am not",
+
+"aren't": "are not",
+
+"can't": "cannot",
+
+"can't've": "cannot have",
+
+"'cause": "because",
+
+"could've": "could have",
+
+"couldn't": "could not",
+
+"couldn't've": "could not have",
+
+"didn't": "did not" 
+}
+#######################################
+def clean_text(text, remove_stopwords=True):
+
+ 
+    if True:
+
+          text = text.split()
+
+new_text = []
+
+for word in text:
+
+    if word in contractions:
+
+        new_text.append(contractions[word])
+
+    else:
+
+         new_text.append(word)
+
+text = " ".join(new_text)a
+
+text = re.sub(r'https?:\/\/.*[\r\n]*', '', text, flags=re.MULTILINE)
+
+text = re.sub(r'\<a href', ' ', text)
+
+text = re.sub(r'&amp;', '', text)
+
+text = re.sub(r'[_"\-;%()|+&=*%.,!?:#$@\[\]/]', ' ', text)
+
+text = re.sub(r'<br />', ' ', text)
+
+text = re.sub(r'\'', ' ', text)
+
+if remove_stopwords:
+
+text = text.split()
+
+stops = set(stopwords.words("english"))
+
+text = [w for w in text if not w in stops]
+
+text = " ".join(text)
+
+return text
+
+#####################################################
+import nltk
+
+nltk.download('stopwords')
+#######################################################
+stories = list()
+
+for i, text in enumerate(clean_texts):
+
+stories.append({'story': text, 'highlights': clean_summaries[i]})
+
+# save to file
+
+dump(stories, open('/deeplearning-keras/ch09/summarization/review_dataset.pkl', 'wb'))
+#########################################################
+batch_size = 64
+
+epochs = 2
+
+latent_dim = 256
+
+num_samples = 10000
+#########################################################
+stories = load(open('/deeplearning-keras/ch09/summarization/review_dataset.pkl', 'rb'))
+
+print('Loaded Stories %d' % len(stories))
+
+print(type(stories))
+#############################################################
+def define_models(n_input, n_output, n_units):
+
+# define training encoder
+
+encoder_inputs = Input(shape=(None, n_input))
+
+encoder = LSTM(n_units, return_state=True)
+
+encoder_outputs, state_h, state_c = encoder(encoder_inputs)
+
+encoder_states = [state_h, state_c]
+
+# define training decoder
+
+decoder_inputs = Input(shape=(None, n_output))
+
+decoder_lstm = LSTM(n_units, return_sequences=True, return_state=True)
+
+decoder_outputs, _, _ = decoder_lstm(decoder_inputs, initial_state=encoder_states)
+
+decoder_dense = Dense(n_output, activation='softmax')
+
+decoder_outputs = decoder_dense(decoder_outputs)
+
+model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
+
+# define inference encoder
+
+encoder_model = Model(encoder_inputs, encoder_states)
+
+# define inference decoder
+
+decoder_state_input_h = Input(shape=(n_units,))
+
+decoder_state_input_c = Input(shape=(n_units,))
+
+decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
+
+decoder_outputs, state_h, state_c = decoder_lstm(decoder_inputs,  initial_state=decoder_states_inputs)
+
+decoder_states = [state_h, state_c]
+
+decoder_outputs = decoder_dense(decoder_outputs)
+
+decoder_model = Model([decoder_inputs] + decoder_states_inputs, [decoder_outputs] + decoder_states)
+
+# return all models
+
+return model, encoder_model, decoder_model
+################################################################
+# Run training
+
+model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
+
+model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
+
+batch_size=batch_size,
+
+epochs=epochs,
+
+validation_split=0.2)
+
+# Save model
+
+model.save('/deeplearning-keras/ch09/summarization/model2.h5')
