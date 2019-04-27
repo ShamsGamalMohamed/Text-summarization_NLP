@@ -1,0 +1,18 @@
+## Requirement Packages && Library
+
+ bs4 as bs  
+ urllib.request  
+ re
+ nltk
+ heapq 
+ pandas
+ pickle
+
+
+##################################
+##################################
+
+
+
+
+
